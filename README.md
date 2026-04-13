@@ -142,7 +142,8 @@ Messung beendet - Button loslassen
 
 ## Autoren
 
-Projekt entwickelt an der Oberschule IKE (4.FI)
+Autor: Diego Trocker
+Projekt entwickelt an der Oberschule Chr. J. Tschuggmall in Brixen (4.FI)
 
 ## Lizenz
 
