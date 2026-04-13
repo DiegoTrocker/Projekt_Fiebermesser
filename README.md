@@ -19,7 +19,7 @@ Ein Arduino-basiertes Fiebermessgerät mit IR-Sensor, LCD-Display und Alarmsyste
 | **MLX90614 (analog)** | IR-Temperatursensor | A1 (Objekt), A0 (Umgebung) |
 | **Grove RGB LCD** | 16x2 Display mit I2C | A4 (SDA), A5 (SCL), Addr: 0x3E |
 | **Buzzer** | Piezo-Buzzer | D4 |
-| **Button** | Taster (Push-Button) | D3 |
+| **DHT11** | Raumtemperatur-Sensor | D8 |
 | **LED** | Built-in LED | D13 |
 
 ## Pin-Konfiguration
@@ -29,6 +29,7 @@ Ein Arduino-basiertes Fiebermessgerät mit IR-Sensor, LCD-Display und Alarmsyste
 #define IR_SENSOR_SUR A0    // Umgebungstemperatur (optional)
 #define BUZZER_PIN 4        // Buzzer Piepton
 #define BUTTON_PIN 3        // Starttaster
+#define DHT_PIN 8           // DHT11 Raumtemperatur
 ```
 
 ## Installation
@@ -38,6 +39,7 @@ Ein Arduino-basiertes Fiebermessgerät mit IR-Sensor, LCD-Display und Alarmsyste
 2. Installiere:
    - `Adafruit MLX90614 Library` (v2.1.6+)
    - `Grove - LCD RGB Backlight` (v1.0.2+)
+   - `DHT sensor library` (v1.4.4+)
    - `Wire` (Standard)
 
 ### Code hochladen
@@ -58,38 +60,25 @@ Ein Arduino-basiertes Fiebermessgerät mit IR-Sensor, LCD-Display und Alarmsyste
 
 ## Kalibrierung
 
-Die Temperaturmessung wird durch zwei Parameter gesteuert:
+Die Temperaturmessung wird **automatisch kalibriert** mit dem DHT11-Sensor:
 
-```cpp
-const float ANALOG_TEMP_GAIN = 75.0;     // mV/°C Faktor
-const float ANALOG_TEMP_OFFSET = 0.0;    // °C Offset
+- **DHT11 misst Raumtemperatur** (echte Referenz)
+- **IR-Sensor wird dynamisch angepasst** – Offset wird pro Messung berechnet
+- **Keine manuelle Kalibrierung nötig!**
+
+### Wie es funktioniert
+
+1. DHT11 liest Raumtemperatur (z.B. 22°C)
+2. IR-Sensor misst Rohwert (z.B. 0.498V → 37.4°C)
+3. Offset = Raumtemp - IR-Rohwert (z.B. 22 - 37.4 = -15.4°C)
+4. Kalibrierte Temp = IR-Rohwert + Offset (37.4 - 15.4 = 22°C)
+
+### Beispiel
+
 ```
-
-### Kalibrierung durchführen
-
-1. **Referenztemperatur messen** – Mit echtem Thermometer (z.B. 22°C Raumtemperatur)
-2. **Sensor am Raum halten** – Nicht auf Haut
-3. **Button drücken** – Serial Monitor öffnen (115200 Baud)
-4. **Logs ansehen:**
-   ```
-   Spannung OBJ: 0.498V
-   Formeln: tempDirect=37.4°C, tempCalibrated=37.4°C
-   ```
-5. **Berechnung:**
-   - `ReferenzTemp = Spannung * GAIN + OFFSET`
-   - Beispiel: `22 = 0.498 * GAIN + 0` → `GAIN = 44.2`
-
-### Mehrpunkt-Kalibrierung
-
-Für höhere Genauigkeit 2-3 Messwerte bei verschiedenen Temperaturen sammeln:
-
-| Temperatur | Spannung | Berechnung |
-|----------|----------|-----------|
-| 20°C | 0.40V | Wert 1 |
-| 37°C | 0.50V | Wert 2 |
-| 40°C | 0.54V | Wert 3 |
-
-Dann lineare Regression durchführen und GAIN/OFFSET anpassen.
+Raumtemp (DHT11): 22.0°C | Offset: -15.4°C
+tempDirect=37.4°C, tempCalibrated=22.0°C ✓
+```
 
 ## Troubleshooting
 
@@ -120,11 +109,13 @@ RGB LCD erkannt auf Adresse 0x3E
 LCD initialisiert
 Starte MLX90614 (analog)...
 MLX90614 analog initialisiert!
+DHT11 initialisiert
 === Setup abgeschlossen ===
 
 === Messung gestartet ===
 Rohwert (gemittelt): 102 | Spannung OBJ: 0.498V | SUR: 0.107V
-Formeln: tempMLX=-0.2°C, tempDirect=37.4°C, tempCalibrated=37.4°C
+Raumtemp (DHT11): 22.0°C | Offset: -15.4°C
+Formeln: tempMLX=-0.2°C, tempDirect=37.4°C, tempCalibrated=22.0°C
 Status: NORMAL
 Messung beendet - Button loslassen
 ```

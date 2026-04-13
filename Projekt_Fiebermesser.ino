@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
 #include "rgb_lcd.h"
+#include <DHT.h>
 
 // Arduino Uno Pin-Definitionen
 #define IR_SENSOR_OBJ A1  // Objekttemperatur (analog)
@@ -9,6 +10,7 @@
 // Zusätzliche Komponenten
 #define BUZZER_PIN 4      // Buzzer an D4
 #define BUTTON_PIN 3      // Button an D3
+#define DHT_PIN 8         // DHT11 an D8
 
 // 1. Pins für das Grove Shield (Hardware I2C)
 // Die Hardware-I2C-Verbindung verwendet standardmäßig A4/A5
@@ -19,21 +21,31 @@
 // 2. Sensor & LCD Instanzen
 rgb_lcd lcd;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+DHT dht(DHT_PIN, DHT11);
 
-const float FIEBER_GRENZE = 38.5; // Erhöht um falsche Alarme zu reduzieren
+const float FIEBER_GRENZE = 37.6; // Erhöht um falsche Alarme zu reduzieren
 
 // Kalibrierung (anpassen, bis Werte realistisch sind):
-//  - ANALOG_TEMP_GAIN: Passe an basierend auf Sensor. Typisch 100 für 10mV/°C, aber für IR-Sensor oft anders.
-//  - ANALOG_TEMP_OFFSET: Passe an.
-// Für deinen Sensor: Bei Raum ~35°C, Gain ~75, Offset ~0.
-const float ANALOG_TEMP_GAIN = 75.0;
-const float ANALOG_TEMP_OFFSET = 0.0;
+//  - ANALOG_TEMP_GAIN: 28 für lineare Skalierung
+//  - ANALOG_TEMP_OFFSET: 22.3 für Basisversatz
+// Kalibrierung anhand Umgebung 35-36.7°C und Körper 36.5-37.5°C
+const float ANALOG_TEMP_GAIN = 28.0;
+const float ANALOG_TEMP_OFFSET = 22.3;
 const float ANALOG_TEMP_MIN = 10.0;
 const float ANALOG_TEMP_MAX = 45.0;
 
 bool sensorConnected = false;
 bool lcdConnected = false;
 bool isI2CSensor = false;
+
+float getRoomTemp() {
+    float temp = dht.readTemperature();
+    if (isnan(temp)) {
+        Serial.println("WARNUNG: DHT11 Fehler - verwende 25°C");
+        return 25.0;
+    }
+    return temp;
+}
 
 float readAnalogTemp() {
     // Mehrere Messungen für bessere Stabilität
@@ -64,10 +76,15 @@ float readAnalogTemp() {
     float voltageObj = rawObj * 5.0 / 1024.0;
     float voltageSur = rawSur * 5.0 / 1024.0;
 
+    // Dynamische Kalibrierung mit DHT11
+    float roomTemp = getRoomTemp();
+    float measuredTemp = voltageObj * ANALOG_TEMP_GAIN;  // Rohwert
+    float calibratedOffset = roomTemp - measuredTemp;    // Offset berechnen
+
     // Messwert-Formeln (häufig MLX90614 analog-Clone)
     float tempMLXFormula = (voltageObj - 0.5) * 100.0; // typischer MLX90614 analog (deaktiviert, da falsch)
-    float tempDirect = voltageObj * ANALOG_TEMP_GAIN;     // angepasste Formel
-    float tempCalibrated = tempDirect + ANALOG_TEMP_OFFSET;
+    float tempDirect = measuredTemp;                     // Rohwert
+    float tempCalibrated = measuredTemp + calibratedOffset; // Kalibriert mit DHT11
 
     Serial.print("Rohwert (gemittelt): ");
     Serial.print(rawObj);
@@ -76,6 +93,12 @@ float readAnalogTemp() {
     Serial.print("V | SUR: ");
     Serial.print(voltageSur, 3);
     Serial.println("V");
+
+    Serial.print("Raumtemp (DHT11): ");
+    Serial.print(roomTemp, 1);
+    Serial.print("°C | Offset: ");
+    Serial.print(calibratedOffset, 1);
+    Serial.println("°C");
 
     Serial.print("Formeln: tempMLX=");
     Serial.print(tempMLXFormula, 1);
@@ -150,6 +173,10 @@ void setup() {
 
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
+
+    // DHT11 initialisieren
+    dht.begin();
+    Serial.println("DHT11 initialisiert");
 
     // Buzzer und Button initialisieren
     pinMode(BUZZER_PIN, OUTPUT);
