@@ -143,6 +143,8 @@ Messung beendet - Button loslassen
 ## Autoren
 
 Autor: Diego Trocker
+
+
 Projekt entwickelt an der Oberschule Chr. J. Tschuggmall in Brixen (4.FI)
 
 ## Lizenz
