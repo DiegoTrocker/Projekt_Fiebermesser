@@ -147,6 +147,8 @@ Autor: Diego Trocker
 
 Projekt entwickelt an der Oberschule Chr. J. Tschuggmall in Brixen (4.FI)
 
+
 ## Lizenz
 
 MIT License – Frei verwendbar für Bildungszwecke
+2026©
