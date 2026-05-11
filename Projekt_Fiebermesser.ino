@@ -1,3 +1,5 @@
+// https://github.com/DiegoTrocker/Fiebermesser_IR_Waermesensor
+
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
 #include "rgb_lcd.h"
